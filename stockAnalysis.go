@@ -19,12 +19,15 @@ var (
 
 var (
 	mapStockCode2Name map[string]string
+	analysis          BaseAnalysis
 )
 
 func init() {
 	flag.BoolVar(&help, "h", false, "help")
 	flag.StringVar(&infile, "i", "", "input file")
 	flag.StringVar(&outfile, "o", "", "output file")
+
+	analysis.Init()
 }
 
 func usage() {
@@ -73,54 +76,19 @@ func readline(filename string, cline chan string) error {
 	return nil
 }
 
-type StockItem struct {
-	stockname    string  //证券名称
-	buyDirection string  //买卖方向
-	businessName string  //业务名称
-	date         string  //成交日期
-	time         string  //成交时间
-	count        float64 //成交数量
-	price        float64 //成交价格
-	amount       float64 //交易金额
-}
-
 func Headers() []string {
 	h := []string{"证券名称", "买卖方向", "业务名称", "成交日期", "成交时间", "成交数量", "成交价格", "交易金额"}
 	return h
 }
 
-func (this *StockItem) CSVString() string {
-	return fmt.Sprintf(`"%s","%s","%s","%s","%s","%f","%f","%f"`, this.stockname,
-		this.buyDirection,
-		this.businessName,
-		this.date,
-		this.time,
-		this.count,
-		this.price,
-		this.amount)
-}
-
-func (this *StockItem) CSVRecord() []string {
-	record := make([]string, 0)
-	record = append(record, this.stockname,
-		this.buyDirection,
-		this.businessName,
-		this.date,
-		this.time,
-		strconv.FormatFloat(this.count, 'f', -1, 64),
-		strconv.FormatFloat(this.price, 'f', -1, 64),
-		strconv.FormatFloat(this.amount, 'f', -1, 64))
-	return record
-}
-
 //成交日期,成交时间,证券名称,证券代码,买卖方向,业务名称,市场,成交数量,成交价格,交易金额,成交编号
 func parseData(row string) StockItem {
-	//row = strings.Trim(row, "\" ")
+	//row = strings.Trim(row, `" `)
 	fields := strings.Split(row, ",")
 
-	date := strings.TrimSpace(strings.Trim(fields[0], "\" "))
-	time := strings.TrimSpace(strings.Trim(fields[1], "\" "))
-	stockname := strings.TrimSpace(strings.Trim(fields[2], "\" "))
+	date := strings.TrimSpace(strings.Trim(fields[0], `" `))
+	time := strings.TrimSpace(strings.Trim(fields[1], `" `))
+	stockname := strings.TrimSpace(strings.Trim(fields[2], `" `))
 	stockcode := strings.TrimSpace(strings.Trim(fields[3], `" `))
 	name, iscontain := mapStockCode2Name[stockcode]
 	if iscontain {
@@ -129,12 +97,12 @@ func parseData(row string) StockItem {
 		mapStockCode2Name[stockcode] = stockname
 	}
 
-	buyDirection := strings.TrimSpace(strings.Trim(fields[4], "\" "))
-	businessName := strings.TrimSpace(strings.Trim(fields[5], "\" "))
+	buyDirection := strings.TrimSpace(strings.Trim(fields[4], `" `))
+	businessName := strings.TrimSpace(strings.Trim(fields[5], `" `))
 	//市场
-	countStr := strings.TrimSpace(strings.Trim(fields[7], "\" ")) //成交数量 strconv.ParseInt(, 10, 64)
-	priceStr := strings.TrimSpace(strings.Trim(fields[8], "\" ")) //
-	amountStr := strings.TrimSpace(strings.Trim(fields[9], "\" "))
+	countStr := strings.TrimSpace(strings.Trim(fields[7], `" `)) //成交数量 strconv.ParseInt(, 10, 64)
+	priceStr := strings.TrimSpace(strings.Trim(fields[8], `" `)) //
+	amountStr := strings.TrimSpace(strings.Trim(fields[9], `" `))
 	count, err := strconv.ParseFloat(countStr, 64)
 	if err != nil {
 		fmt.Println("ParseInt countStr", err, countStr)
@@ -172,6 +140,7 @@ func main() {
 	fmt.Println("需要手动将输出文件转成 utf-8 bom 格式")
 
 	mapStockCode2Name = make(map[string]string)
+
 	chRLine := make(chan string, 100)
 	err := readline(infile, chRLine)
 	if err != nil {
@@ -213,7 +182,9 @@ func main() {
 			}
 			//fmt.Println(data.amount)
 			writer.Write(data.CSVRecord())
+			analysis.AddItem(&data)
 		}
+		analysis.Analysis()
 		finished <- true
 	}()
 	<-finished
