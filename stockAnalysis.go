@@ -175,8 +175,7 @@ func main() {
 			if data.amount == 0 { //|| data.count == 0 || data.price == 0
 				continue
 			}
-			if data.businessName == "新股申购确认缴款" ||
-				data.businessName == "货币基金赎回" ||
+			if data.businessName == "货币基金赎回" ||
 				data.businessName == "货币基金申购" {
 				continue
 			}

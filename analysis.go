@@ -60,7 +60,7 @@ func (this *BaseAnalysis) Analysis() {
 	for stockname, list := range this.mapStockList {
 		rd := AnalysisResult{stockname: stockname}
 		for _, d := range list {
-			if d.businessName == "证券买入" || d.businessName == "证券卖出" {
+			if d.businessName == "证券买入" || d.businessName == "证券卖出" || d.businessName == "新股申购确认缴款" {
 				rd.totalCount += d.count
 				rd.totalAmount += d.amount
 			}
